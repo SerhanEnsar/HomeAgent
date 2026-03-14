@@ -72,3 +72,23 @@ def trash_page(request: Request):
     if not is_logged_in(request):
         return RedirectResponse("/login", status_code=302)
     return templates.TemplateResponse("trash.html", {"request": request, "active_page": "trash"})
+
+@app.get("/api/info")
+def api_info():
+    import socket
+    import subprocess
+    ip = subprocess.check_output(["hostname", "-I"], text=True).strip().split()[0]
+    hostname = socket.gethostname()
+    ssid = subprocess.check_output(["nmcli", "-t", "-f", "active,ssid", "dev", "wifi"], text=True)
+    wifi = "—"
+    for line in ssid.splitlines():
+        if line.startswith("yes:"):
+            wifi = line.split("yes:")[1]
+            break
+    return {
+        "ip": ip,
+        "hostname": hostname,
+        "wifi": wifi,
+        "username": "serhanensar",
+        "version": "1.0.0"
+    }
