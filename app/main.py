@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, Query, HTTPException
+from fastapi import FastAPI, Request, Form, Query, HTTPException, UploadFile, File 
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.templating import Jinja2Templates
@@ -186,3 +186,18 @@ def api_files_delete(req: DeleteReq, request: Request):
     else:
         target.unlink()
     return {"ok": True}
+
+@app.post("/api/files/upload")
+async def api_files_upload(
+    request: Request,
+    mount: str = Form(...),
+    path: str = Form(...),
+    file: UploadFile = File(...)
+):
+    if not is_logged_in(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    target_dir = _resolve_in_mount(mount, path)
+    target_file = target_dir / file.filename
+    with open(target_file, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    return {"ok": True, "name": file.filename}

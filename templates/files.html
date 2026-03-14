@@ -271,6 +271,8 @@
         <div class="explorer-toolbar">
           <button class="btn" id="btnBack">⬅ Back</button>
           <button class="btn" id="btnHome">🏠 Devices</button>
+          <button class="btn" id="btnUpload">⬆ Upload</button>
+          <input type="file" id="fileInput" style="display:none" multiple>
         </div>
         <div class="breadcrumb" style="padding:10px 16px;">
           ${esc(currentMount)} / ${esc(currentPath)}
@@ -303,6 +305,22 @@
       currentPath = "";
       document.getElementById("explorer").style.display = "none";
       document.getElementById("devices").style.display = "grid";
+    };
+
+    document.getElementById("btnUpload").onclick = () => {
+      document.getElementById("fileInput").click();
+    };
+
+    document.getElementById("fileInput").onchange = async (e) => {
+      const files = e.target.files;
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("mount", currentMount);
+        formData.append("path", currentPath);
+        formData.append("file", file);
+        await fetch("/api/files/upload", { method: "POST", body: formData });
+      }
+      loadDir();
     };
 
     document.getElementById("btnBack").onclick = () => {
