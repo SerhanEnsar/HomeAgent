@@ -134,6 +134,11 @@
         background: #1e2d45;
       }
 
+      .file-item.selected {
+        background: #1e3a5f;
+        border-left: 3px solid #3b82f6;
+      }
+
       .file-item .left {
         display: flex;
         align-items: center;
@@ -216,6 +221,7 @@
       let currentPath = "";
       let ctxTarget = null;
       let clipboard = null;
+      let selected = new Set();
       let pressTimer = null;
       let menuJustOpenedUntil = 0;
 
@@ -288,6 +294,7 @@
       }
 
       async function loadDir() {
+        selected.clear();
         const res = await fetch(
           `/api/files/list?mount=${encodeURIComponent(currentMount)}&path=${encodeURIComponent(currentPath)}`,
           { cache: "no-store" },
@@ -383,6 +390,16 @@
         document.querySelectorAll(".file-item").forEach((li) => {
           li.onclick = (e) => {
             if (e.target.classList.contains("dl-btn")) return;
+            if (e.ctrlKey || e.metaKey) {
+              if (selected.has(li.dataset.name)) {
+                selected.delete(li.dataset.name);
+                li.classList.remove("selected");
+              } else {
+                selected.add(li.dataset.name);
+                li.classList.add("selected");
+              }
+              return;
+            }
             if (li.dataset.type === "dir") {
               currentPath = fullPath(li.dataset.name);
               loadDir();
@@ -459,67 +476,66 @@
           }
 
           if (el.dataset.act === "copy") {
-            clipboard = {
-              type: "copy",
-              mount: currentMount,
-              path: ctxTarget.fullPath,
-            };
+            const items =
+              selected.size > 0
+                ? Array.from(selected).map((name) => fullPath(name))
+                : [ctxTarget.fullPath];
+            clipboard = { type: "copy", mount: currentMount, items };
             hideMenu();
             return;
           }
 
           if (el.dataset.act === "cut") {
-            clipboard = {
-              type: "cut",
-              mount: currentMount,
-              path: ctxTarget.fullPath,
-            };
+            const items =
+              selected.size > 0
+                ? Array.from(selected).map((name) => fullPath(name))
+                : [ctxTarget.fullPath];
+            clipboard = { type: "cut", mount: currentMount, items };
             hideMenu();
             return;
           }
 
           if (el.dataset.act === "paste") {
             if (!clipboard) return;
-            const name = clipboard.path.split("/").pop();
-            const dst = fullPath(name);
-
-            if (clipboard.type === "copy") {
-              await fetch("/api/files/copy", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  mount: currentMount,
-                  src: clipboard.path,
-                  dst: dst,
-                }),
-              });
-            } else {
-              await fetch("/api/files/move", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  mount: currentMount,
-                  src: clipboard.path,
-                  dst: dst,
-                }),
-              });
-              clipboard = null;
+            for (const src of clipboard.items) {
+              const name = src.split("/").pop();
+              const dst = fullPath(name);
+              if (clipboard.type === "copy") {
+                await fetch("/api/files/copy", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ mount: currentMount, src, dst }),
+                });
+              } else {
+                await fetch("/api/files/move", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ mount: currentMount, src, dst }),
+                });
+              }
             }
+            if (clipboard.type === "cut") clipboard = null;
             loadDir();
             hideMenu();
             return;
           }
 
           if (el.dataset.act === "delete") {
-            if (!confirm("Delete " + ctxTarget.name + "?")) return;
-            await fetch("/api/files/delete", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                mount: currentMount,
-                path: ctxTarget.fullPath,
-              }),
-            });
+            const items =
+              selected.size > 0
+                ? Array.from(selected).map((name) => fullPath(name))
+                : [ctxTarget.fullPath];
+
+            if (!confirm(`Delete ${items.length} item(s)?`)) return;
+
+            for (const path of items) {
+              await fetch("/api/files/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mount: currentMount, path }),
+              });
+            }
+            selected.clear();
             loadDir();
           }
 
