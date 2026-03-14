@@ -85,6 +85,7 @@
     .cpu .value { color: #3b82f6; }
     .ram .value { color: #6366f1; }
     .disk .value { color: #22c55e; }
+    .temp .value { color: #f59e0b; }
   </style>
 </head>
 <body>
@@ -112,20 +113,28 @@
       <div class="value" id="disk">—</div>
       <div class="bar"><div class="bar-fill" id="disk_bar" style="width:0%"></div></div>
     </div>
+
+    <div class="card temp">
+      <div class="label">CPU Sıcaklık</div>
+      <div class="value" id="temp">—</div>
+      <div class="bar"><div class="bar-fill" id="temp_bar" style="width:0%"></div></div>
+    </div>
   </div>
 
   <script>
     async function refresh() {
-      const res = await fetch("/api/status", { cache: "no-store" });
+      const res = await fetch("/api/status?api_key=YOUR_API_KEY", { cache: "no-store" });
       const d = await res.json();
 
       document.getElementById("cpu").textContent = d.cpu_percent.toFixed(1) + "%";
       document.getElementById("ram").textContent = d.ram_percent.toFixed(1) + "%";
       document.getElementById("disk").textContent = d.disk_percent.toFixed(1) + "%";
+      document.getElementById("temp").textContent = d.cpu_temp !== null ? d.cpu_temp + "°C" : "—";
 
       document.getElementById("cpu_bar").style.width = d.cpu_percent + "%";
       document.getElementById("ram_bar").style.width = d.ram_percent + "%";
       document.getElementById("disk_bar").style.width = d.disk_percent + "%";
+      document.getElementById("temp_bar").style.width = d.cpu_temp !== null ? (d.cpu_temp / 100 * 100) + "%" : "0%";
     }
 
     refresh();

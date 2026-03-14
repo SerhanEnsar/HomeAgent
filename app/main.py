@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.templating import Jinja2Templates
@@ -46,12 +46,23 @@ def home(request: Request):
         return RedirectResponse("/login", status_code=302)
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
+from fastapi import FastAPI, Request, Form, Query
+
 @app.get("/api/status")
-def api_status(api_key: str = ""):
+def api_status(api_key: str = Query(default="")):
     if api_key != os.getenv("API_KEY"):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
+    
+    # CPU temperature
+    try:
+        temp_str = open("/sys/class/thermal/thermal_zone0/temp").read().strip()
+        cpu_temp = round(int(temp_str) / 1000, 1)
+    except:
+        cpu_temp = None
+
     return {
         "cpu_percent": psutil.cpu_percent(interval=0.2),
         "ram_percent": psutil.virtual_memory().percent,
         "disk_percent": psutil.disk_usage("/").percent,
+        "cpu_temp": cpu_temp,
     }
