@@ -3,10 +3,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from dotenv import load_dotenv
 import os
+from fastapi.templating import Jinja2Templates
 
 load_dotenv()
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
 # Session middleware
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "fallback_secret"))
@@ -22,20 +24,14 @@ def is_logged_in(request: Request) -> bool:
 def login_page(request: Request):
     if is_logged_in(request):
         return RedirectResponse("/", status_code=302)
-    return """
-    <form method="post" action="/login">
-        <input name="username" placeholder="Username">
-        <input type="password" name="password" placeholder="Password">
-        <button type="submit">Login</button>
-    </form>
-    """
+    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
 
 @app.post("/login")
 def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
     if username == USERNAME and password == PASSWORD:
         request.session["user"] = username
         return RedirectResponse("/", status_code=302)
-    return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse("login.html", {"request": request, "error": "İncorrect username or password."})
 
 @app.get("/logout")
 def logout(request: Request):
