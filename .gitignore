@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# Gizli kimlik bilgileri
+.session_secret
+.auth_salt
+.auth_hash
+
+# Config
+config.json
+
+# Telegram state
+app/telegram_state.json
+app/telegram_state.txt
+
+# Genel
+.DS_Store
+*.log
