@@ -212,3 +212,30 @@ async def api_files_mkdir(request: Request):
         raise HTTPException(status_code=409, detail="already_exists")
     target.mkdir(parents=True)
     return {"ok": True}
+
+@app.post("/api/files/move")
+async def api_files_move(request: Request):
+    if not is_logged_in(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    data = await request.json()
+    src = _resolve_in_mount(data["mount"], data["src"])
+    dst = _resolve_in_mount(data["mount"], data["dst"])
+    if not src.exists():
+        raise HTTPException(status_code=404, detail="not_found")
+    shutil.move(str(src), str(dst))
+    return {"ok": True}
+
+@app.post("/api/files/copy")
+async def api_files_copy(request: Request):
+    if not is_logged_in(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    data = await request.json()
+    src = _resolve_in_mount(data["mount"], data["src"])
+    dst = _resolve_in_mount(data["mount"], data["dst"])
+    if not src.exists():
+        raise HTTPException(status_code=404, detail="not_found")
+    if src.is_dir():
+        shutil.copytree(str(src), str(dst))
+    else:
+        shutil.copy2(str(src), str(dst))
+    return {"ok": True}
