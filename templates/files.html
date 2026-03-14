@@ -526,10 +526,10 @@
                 ? Array.from(selected).map((name) => fullPath(name))
                 : [ctxTarget.fullPath];
 
-            if (!confirm(`Delete ${items.length} item(s)?`)) return;
+            if (!confirm(`Move ${items.length} item(s) to trash?`)) return;
 
             for (const path of items) {
-              await fetch("/api/files/delete", {
+              await fetch("/api/files/trash", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ mount: currentMount, path }),
