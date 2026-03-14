@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Files - HomeAgent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #080c14;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #e2e8f0;
+    }
+
+    .container {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 20px;
+      color: #e2e8f0;
+    }
+
+    .device-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .device-card {
+      background: #0f1623;
+      border: 1px solid #1e2d45;
+      border-radius: 14px;
+      padding: 16px;
+      cursor: pointer;
+      transition: .15s;
+    }
+
+    .device-card:hover { background: #1e2d45; }
+
+    .device-card .mount {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .device-card .meta {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .bar {
+      margin-top: 10px;
+      height: 4px;
+      background: #1e2d45;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #6366f1);
+      border-radius: 999px;
+    }
+
+    .explorer {
+      background: #0f1623;
+      border: 1px solid #1e2d45;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .explorer-toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e2d45;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      background: #1e2d45;
+      border: 1px solid #2a3f5f;
+      color: #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn:hover { background: #2a3f5f; }
+
+    .breadcrumb {
+      font-size: 13px;
+      color: #64748b;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .file-list {
+      list-style: none;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-top: 1px solid #1e2d45;
+      cursor: pointer;
+      transition: .15s;
+    }
+
+    .file-item:hover { background: #1e2d45; }
+
+    .file-item .left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .file-item .right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-item .size {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .dl-btn {
+      padding: 5px 10px;
+      background: #1e3a5f;
+      border: 1px solid #2a4f7f;
+      color: #3b82f6;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .dl-btn:hover { background: #2a4f7f; }
+
+    /* Context menu */
+    #ctxMenu {
+      position: fixed;
+      z-index: 9999;
+      display: none;
+      background: #0f1623;
+      border: 1px solid #1e2d45;
+      border-radius: 12px;
+      min-width: 180px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.5);
+      overflow: hidden;
+    }
+
+    .ctx-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .ctx-item:hover { background: #1e2d45; }
+    .ctx-delete { color: #f87171; }
+  </style>
+</head>
+<body>
+
+{% include "_nav.html" %}
+
+<div class="container">
+  <h1>📁 File Explorer</h1>
+
+  <div id="devices" class="device-grid"></div>
+  <div id="explorer" style="display:none;"></div>
+</div>
+
+<div id="ctxMenu">
+  <div class="ctx-item" data-act="rename">✏️ Rename</div>
+  <div class="ctx-item ctx-delete" data-act="delete">🗑 Delete</div>
+</div>
+
+<script>
+  let currentMount = null;
+  let currentPath = "";
+  let ctxTarget = null;
+  let pressTimer = null;
+  let menuJustOpenedUntil = 0;
+
+  function esc(s) {
+    return (s || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  }
+
+  function formatSize(bytes) {
+    if (!bytes) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / 1048576).toFixed(1) + " MB";
+  }
+
+  function fullPath(name) {
+    return currentPath ? currentPath + "/" + name : name;
+  }
+
+  function hideMenu() {
+    document.getElementById("ctxMenu").style.display = "none";
+    ctxTarget = null;
+  }
+
+  function showMenu(x, y, target) {
+    ctxTarget = target;
+    const m = document.getElementById("ctxMenu");
+    m.style.left = x + "px";
+    m.style.top = y + "px";
+    m.style.display = "block";
+    menuJustOpenedUntil = Date.now() + 300;
+  }
+
+  document.addEventListener("click", () => {
+    if (Date.now() < menuJustOpenedUntil) return;
+    hideMenu();
+  });
+
+  async function loadDevices() {
+    const res = await fetch("/api/files/devices", { cache: "no-store" });
+    const devices = await res.json();
+    const container = document.getElementById("devices");
+    container.innerHTML = "";
+
+    devices.forEach(d => {
+      if (d.filesystem === "tmpfs") return;
+      const pct = parseInt(d.percent);
+      const card = document.createElement("div");
+      card.className = "device-card";
+      card.innerHTML = `
+        <div class="mount">💾 ${esc(d.mount)}</div>
+        <div class="meta">${d.used} / ${d.size} (${d.percent})</div>
+        <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+      `;
+      card.onclick = () => {
+        currentMount = d.mount;
+        currentPath = "";
+        document.getElementById("devices").style.display = "none";
+        document.getElementById("explorer").style.display = "block";
+        loadDir();
+      };
+      container.appendChild(card);
+    });
+  }
+
+  async function loadDir() {
+    const res = await fetch(
+      `/api/files/list?mount=${encodeURIComponent(currentMount)}&path=${encodeURIComponent(currentPath)}`,
+      { cache: "no-store" }
+    );
+    const data = await res.json();
+
+    const explorer = document.getElementById("explorer");
+    let html = `
+      <div class="explorer">
+        <div class="explorer-toolbar">
+          <button class="btn" id="btnBack">⬅ Back</button>
+          <button class="btn" id="btnHome">🏠 Devices</button>
+        </div>
+        <div class="breadcrumb" style="padding:10px 16px;">
+          ${esc(currentMount)} / ${esc(currentPath)}
+        </div>
+        <ul class="file-list">
+    `;
+
+    data.items.forEach(it => {
+      const icon = it.type === "dir" ? "📁" : "📄";
+      const dlBtn = it.type === "file"
+        ? `<button class="dl-btn" data-name="${esc(it.name)}">⬇</button>`
+        : "";
+
+      html += `
+        <li class="file-item" data-name="${esc(it.name)}" data-type="${it.type}">
+          <div class="left">${icon} ${esc(it.name)}</div>
+          <div class="right">
+            <span class="size">${formatSize(it.size)}</span>
+            ${dlBtn}
+          </div>
+        </li>
+      `;
+    });
+
+    html += `</ul></div>`;
+    explorer.innerHTML = html;
+
+    document.getElementById("btnHome").onclick = () => {
+      currentMount = null;
+      currentPath = "";
+      document.getElementById("explorer").style.display = "none";
+      document.getElementById("devices").style.display = "grid";
+    };
+
+    document.getElementById("btnBack").onclick = () => {
+      if (!currentPath) return;
+      const parts = currentPath.split("/");
+      parts.pop();
+      currentPath = parts.join("/");
+      loadDir();
+    };
+
+    document.querySelectorAll(".file-item").forEach(li => {
+      li.onclick = (e) => {
+        if (e.target.classList.contains("dl-btn")) return;
+        if (li.dataset.type === "dir") {
+          currentPath = fullPath(li.dataset.name);
+          loadDir();
+        }
+      };
+    });
+
+    document.querySelectorAll(".dl-btn").forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const name = btn.dataset.name;
+        const path = fullPath(name);
+        window.location.href = `/api/files/download?mount=${encodeURIComponent(currentMount)}&path=${encodeURIComponent(path)}`;
+      };
+    });
+
+    document.querySelectorAll(".file-item").forEach(li => {
+      li.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        showMenu(e.clientX, e.clientY, {
+          name: li.dataset.name,
+          type: li.dataset.type,
+          fullPath: fullPath(li.dataset.name)
+        });
+      });
+
+      li.addEventListener("pointerdown", (e) => {
+        if (e.pointerType !== "touch") return;
+        pressTimer = setTimeout(() => {
+          showMenu(e.clientX, e.clientY, {
+            name: li.dataset.name,
+            type: li.dataset.type,
+            fullPath: fullPath(li.dataset.name)
+          });
+        }, 550);
+      });
+
+      li.addEventListener("pointerup", () => clearTimeout(pressTimer));
+      li.addEventListener("pointermove", () => clearTimeout(pressTimer));
+    });
+  }
+
+  document.querySelectorAll(".ctx-item").forEach(el => {
+    el.onclick = async () => {
+      if (!ctxTarget) return;
+
+      if (el.dataset.act === "rename") {
+        const n = prompt("New name:", ctxTarget.name);
+        if (!n) return;
+        await fetch("/api/files/rename", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mount: currentMount, path: ctxTarget.fullPath, new_name: n })
+        });
+        loadDir();
+      }
+
+      if (el.dataset.act === "delete") {
+        if (!confirm("Delete " + ctxTarget.name + "?")) return;
+        await fetch("/api/files/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mount: currentMount, path: ctxTarget.fullPath })
+        });
+        loadDir();
+      }
+
+      hideMenu();
+    };
+  });
+
+  loadDevices();
+</script>
+
+</body>
+</html>
