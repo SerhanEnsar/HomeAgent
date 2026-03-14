@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HomeAgent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #080c14;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #e2e8f0;
+      padding: 24px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      font-size: 20px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logout {
+      padding: 8px 16px;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.3);
+      color: #f87171;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .card {
+      background: #0f1623;
+      border: 1px solid #1e2d45;
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .card .label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .card .value {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .bar {
+      margin-top: 12px;
+      height: 6px;
+      background: #1e2d45;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #3b82f6, #6366f1);
+      transition: width .5s ease;
+    }
+
+    .cpu .value { color: #3b82f6; }
+    .ram .value { color: #6366f1; }
+    .disk .value { color: #22c55e; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">🏠 HomeAgent</div>
+    <a href="/logout" class="logout">Çıkış</a>
+  </div>
+
+  <div class="grid">
+    <div class="card cpu">
+      <div class="label">CPU</div>
+      <div class="value" id="cpu">—</div>
+      <div class="bar"><div class="bar-fill" id="cpu_bar" style="width:0%"></div></div>
+    </div>
+
+    <div class="card ram">
+      <div class="label">RAM</div>
+      <div class="value" id="ram">—</div>
+      <div class="bar"><div class="bar-fill" id="ram_bar" style="width:0%"></div></div>
+    </div>
+
+    <div class="card disk">
+      <div class="label">Disk</div>
+      <div class="value" id="disk">—</div>
+      <div class="bar"><div class="bar-fill" id="disk_bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <script>
+    async function refresh() {
+      const res = await fetch("/api/status", { cache: "no-store" });
+      const d = await res.json();
+
+      document.getElementById("cpu").textContent = d.cpu_percent.toFixed(1) + "%";
+      document.getElementById("ram").textContent = d.ram_percent.toFixed(1) + "%";
+      document.getElementById("disk").textContent = d.disk_percent.toFixed(1) + "%";
+
+      document.getElementById("cpu_bar").style.width = d.cpu_percent + "%";
+      document.getElementById("ram_bar").style.width = d.ram_percent + "%";
+      document.getElementById("disk_bar").style.width = d.disk_percent + "%";
+    }
+
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+
+</body>
+</html>

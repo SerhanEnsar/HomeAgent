@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 import os
-from fastapi.templating import Jinja2Templates
+import psutil
 
 load_dotenv()
 
@@ -42,4 +43,14 @@ def logout(request: Request):
 def home(request: Request):
     if not is_logged_in(request):
         return RedirectResponse("/login", status_code=302)
-    return {"message": "Hoşgeldin " + request.session["user"]}
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+@app.get("/api/status")
+def api_status(request: Request):
+    if not is_logged_in(request):
+        return RedirectResponse("/login", status_code=302)
+    return {
+        "cpu_percent": psutil.cpu_percent(interval=0.2),
+        "ram_percent": psutil.virtual_memory().percent,
+        "disk_percent": psutil.disk_usage("/").percent,
+    }
