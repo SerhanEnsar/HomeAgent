@@ -230,3 +230,29 @@ async def api_files_trash_delete(req: TrashDeleteReq, request: Request):
     if info_file.exists():
         info_file.unlink()
     return {"ok": True}
+
+@router.get("/preview")
+def api_files_preview(request: Request, mount: str, path: str):
+    target = _resolve_in_mount(mount, path)
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="not_found")
+    
+    mime, _ = mimetypes.guess_type(str(target))
+    
+    # sadece metin dosyalarını oku
+    if mime and (mime.startswith("text/") or mime in ["application/json", "application/xml"]):
+        try:
+            content = target.read_text(encoding="utf-8", errors="replace")
+            return {"type": "text", "content": content, "mime": mime}
+        except:
+            raise HTTPException(status_code=400, detail="cannot_read")
+    
+    # resim dosyaları
+    if mime and mime.startswith("image/"):
+        return {"type": "image", "mime": mime}
+    
+    # pdf
+    if mime == "application/pdf":
+        return {"type": "pdf", "mime": mime}
+    
+    return {"type": "unsupported", "mime": mime}

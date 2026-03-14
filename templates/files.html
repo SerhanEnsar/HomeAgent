@@ -196,8 +196,17 @@
       .ctx-delete {
         color: #f87171;
       }
+
+      #previewModal {
+        display: none;
+      }
+      #previewModal.open {
+        display: flex;
+      }
+
     </style>
   </head>
+
   <body>
     {% include "_nav.html" %}
 
@@ -265,6 +274,33 @@
         if (Date.now() < menuJustOpenedUntil) return;
         hideMenu();
       });
+
+      function closePreview() {
+        document.getElementById("previewModal").classList.remove("open");
+      }
+
+      async function openPreview(name, mount, path) {
+        const res = await fetch(
+          `/api/files/preview?mount=${encodeURIComponent(mount)}&path=${encodeURIComponent(path)}`,
+        );
+        const data = await res.json();
+        document.getElementById("previewTitle").textContent = name;
+        const content = document.getElementById("previewContent");
+
+        if (data.type === "image") {
+          const url = `/api/files/download?mount=${encodeURIComponent(mount)}&path=${encodeURIComponent(path)}`;
+          content.innerHTML = `<img src="${url}" style="max-width:100%; border-radius:8px;">`;
+        } else if (data.type === "text") {
+          content.innerHTML = `<pre>${esc(data.content)}</pre>`;
+        } else if (data.type === "pdf") {
+          const url = `/api/files/download?mount=${encodeURIComponent(mount)}&path=${encodeURIComponent(path)}`;
+          window.open(url, "_blank");
+          return;
+        } else {
+          content.innerHTML = `<p style="color:#64748b;">Preview not available for this file type.</p>`;
+        }
+        document.getElementById("previewModal").classList.add("open");
+      }
 
       async function loadDevices() {
         const res = await fetch("/api/files/devices", { cache: "no-store" });
@@ -403,6 +439,12 @@
             if (li.dataset.type === "dir") {
               currentPath = fullPath(li.dataset.name);
               loadDir();
+            } else {
+              openPreview(
+                li.dataset.name,
+                currentMount,
+                fullPath(li.dataset.name),
+              );
             }
           };
         });
@@ -545,5 +587,53 @@
 
       loadDevices();
     </script>
+
+    <!-- Preview Modal -->
+    <div
+      id="previewModal"
+      style="
+        position: fixed;
+        inset: 0;
+        z-index: 9998;
+        background: rgba(0, 0, 0, 0.8);
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      "
+    >
+      <div
+        style="
+          background: #0f1623;
+          border: 1px solid #1e2d45;
+          border-radius: 16px;
+          max-width: 900px;
+          width: 100%;
+          max-height: 90vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #1e2d45;
+          "
+        >
+          <span
+            id="previewTitle"
+            style="font-weight: 700; font-size: 14px"
+          ></span>
+          <button class="btn" onclick="closePreview()">✕ Close</button>
+        </div>
+        <div
+          id="previewContent"
+          style="overflow: auto; padding: 16px; flex: 1"
+        ></div>
+      </div>
+    </div>
   </body>
 </html>
