@@ -1,16 +1,19 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
-import secrets
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app = FastAPI()
 
 # Session middleware
-app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "fallback_secret"))
 
 # Admin User
-USERNAME = "serhanensar"
-PASSWORD = "changeme"
+USERNAME = os.getenv("USERNAME", "admin")
+PASSWORD = os.getenv("PASSWORD", "changeme")
 
 def is_logged_in(request: Request) -> bool:
     return bool(request.session.get("user"))
