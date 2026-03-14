@@ -21,3 +21,4 @@ app/telegram_state.txt
 # Genel
 .DS_Store
 *.log
+venv/
