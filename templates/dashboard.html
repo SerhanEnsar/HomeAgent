@@ -89,33 +89,29 @@
   </style>
 </head>
 <body>
-
-  <div class="topbar">
-    <div class="brand">🏠 HomeAgent</div>
-    <a href="/logout" class="logout">Çıkış</a>
-  </div>
+    {% include "_nav.html" %}
 
   <div class="grid">
     <div class="card cpu">
-      <div class="label">CPU</div>
+      <div class="label">CPU Usage</div>
       <div class="value" id="cpu">—</div>
       <div class="bar"><div class="bar-fill" id="cpu_bar" style="width:0%"></div></div>
     </div>
 
     <div class="card ram">
-      <div class="label">RAM</div>
+      <div class="label">RAM Usage</div>
       <div class="value" id="ram">—</div>
       <div class="bar"><div class="bar-fill" id="ram_bar" style="width:0%"></div></div>
     </div>
 
     <div class="card disk">
-      <div class="label">Disk</div>
+      <div class="label">Disk Usage</div>
       <div class="value" id="disk">—</div>
       <div class="bar"><div class="bar-fill" id="disk_bar" style="width:0%"></div></div>
     </div>
 
     <div class="card temp">
-      <div class="label">CPU Sıcaklık</div>
+      <div class="label">CPU Temperature</div>
       <div class="value" id="temp">—</div>
       <div class="bar"><div class="bar-fill" id="temp_bar" style="width:0%"></div></div>
     </div>
