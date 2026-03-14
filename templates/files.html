@@ -272,6 +272,7 @@
           <button class="btn" id="btnBack">⬅ Back</button>
           <button class="btn" id="btnHome">🏠 Devices</button>
           <button class="btn" id="btnUpload">⬆ Upload</button>
+          <button class="btn" id="btnMkdir">📁 New Folder</button>
           <input type="file" id="fileInput" style="display:none" multiple>
         </div>
         <div class="breadcrumb" style="padding:10px 16px;">
@@ -309,6 +310,17 @@
 
     document.getElementById("btnUpload").onclick = () => {
       document.getElementById("fileInput").click();
+    };
+
+    document.getElementById("btnMkdir").onclick = async () => {
+      const name = prompt("Folder name:");
+      if (!name) return;
+      await fetch("/api/files/mkdir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mount: currentMount, path: currentPath, name: name })
+      });
+      loadDir();
     };
 
     document.getElementById("fileInput").onchange = async (e) => {

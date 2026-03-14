@@ -201,3 +201,14 @@ async def api_files_upload(
     with open(target_file, "wb") as f:
         shutil.copyfileobj(file.file, f)
     return {"ok": True, "name": file.filename}
+
+@app.post("/api/files/mkdir")
+async def api_files_mkdir(request: Request):
+    if not is_logged_in(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    data = await request.json()
+    target = _resolve_in_mount(data["mount"], data["path"] + "/" + data["name"])
+    if target.exists():
+        raise HTTPException(status_code=409, detail="already_exists")
+    target.mkdir(parents=True)
+    return {"ok": True}
