@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 import os
 import psutil
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 
 load_dotenv()
 
@@ -46,9 +47,9 @@ def home(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 @app.get("/api/status")
-def api_status(request: Request):
-    if not is_logged_in(request):
-        return RedirectResponse("/login", status_code=302)
+def api_status(api_key: str = ""):
+    if api_key != os.getenv("API_KEY"):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
     return {
         "cpu_percent": psutil.cpu_percent(interval=0.2),
         "ram_percent": psutil.virtual_memory().percent,
