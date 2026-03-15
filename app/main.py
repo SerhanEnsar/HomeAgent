@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from app.files import router as files_router
 import os
 import psutil
+import httpx
 
 load_dotenv()
 
@@ -92,3 +93,26 @@ def api_info():
         "username": "serhanensar",
         "version": "1.0.0"
     }
+
+@app.post("/api/chat")
+async def api_chat(request: Request, api_key: str = Query(default="")):
+    if api_key != os.getenv("API_KEY"):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    
+    data = await request.json()
+    message = data.get("message", "")
+    
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "mistral:7b",
+                "prompt": message,
+                "system": "Sen HomeAgent adlı bir Pi asistanısın. Kısa ve öz Türkçe cevaplar ver. Sistem bilgisi sorulursa yardımcı ol.",
+                "stream": False
+            },
+            timeout=60
+        )
+    
+    result = resp.json()
+    return {"response": result.get("response", "")}
