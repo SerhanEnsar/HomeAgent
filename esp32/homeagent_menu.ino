@@ -52,12 +52,16 @@ String resolvedIP = "";
 #define ARROW_DN_Y (CONTENT_H - 22)
 #define ARROW_SIZE 18
 
+int kbSelectedFile = -1;
+
 const char* fmenuLabels[] = {
   "Copy", "Cut", "Paste", "Delete", "Rename", "New Folder", "Trash"
 };
 
 int currentPage = PAGE_MENU;
 int scrollOffset = 0;
+
+bool kbShift = false;
 
 struct FileItem {
   char name[64];
@@ -109,6 +113,179 @@ String httpPost(String url, String body) {
   http.end();
   return result;
 }
+
+// ─── KEYBOARD ───────────────────────────────────────────
+char kbBuffer[64] = "";
+bool kbActive = false;
+bool kbSymMode = false;
+void (*kbCallback)(const char*) = nullptr;
+char kbTitle[32] = "";
+
+const char* kbRows[] = {
+  "QWERTYUIOP",
+  "ASDFGHJKL",
+  "ZXCVBNM"
+};
+
+const char* kbSymRows[] = {
+  "1234567890",
+  "!@#$%^&*()",
+  "-_=+[]{}\\|"
+};
+
+void drawKeyboard() {
+  tft.fillScreen(COL_BG);
+
+  // Başlık
+  tft.setTextColor(COL_ACCENT, COL_BG);
+  tft.setTextSize(1);
+  tft.drawString(kbTitle, 4, 4);
+
+  // Input alanı
+  tft.fillRoundRect(4, 14, SCREEN_W - 8, 18, 4, COL_BTN);
+  tft.setTextColor(TFT_WHITE, COL_BTN);
+  tft.drawString(kbBuffer, 8, 18);
+
+  // Tuşlar
+  const char** rows = kbSymMode ? kbSymRows : kbRows;
+  int startY = 40;
+
+  for (int r = 0; r < 3; r++) {
+    int len = strlen(rows[r]);
+    int keyW = SCREEN_W / 10;
+    int keyH = 28;
+    int offsetX = (SCREEN_W - len * keyW) / 2;
+
+    for (int k = 0; k < len; k++) {
+      int kx = offsetX + k * keyW;
+      int ky = startY + r * (keyH + 3);
+      tft.fillRoundRect(kx, ky, keyW - 2, keyH, 4, COL_BTN);
+      tft.setTextColor(TFT_WHITE, COL_BTN);
+      tft.setTextSize(1);
+      char ch = rows[r][k];
+      if (!kbSymMode) ch = kbShift ? toupper(ch) : tolower(ch);
+      char label[2] = { ch, 0 };
+      tft.drawString(label, kx + (keyW - 8) / 2, ky + 10);
+    }
+  }
+
+  // Alt tuşlar
+  int botY = startY + 3 * 31 + 4;
+  int bw = SCREEN_W / 4;
+
+  // SHIFT
+  tft.fillRoundRect(0, botY, bw - 2, 28, 4, COL_BTN);
+  tft.setTextColor(kbShift ? COL_ACCENT : TFT_WHITE, COL_BTN);
+  tft.setTextSize(1);
+  tft.drawString("SHF", 6, botY + 10);
+
+  // SYM
+  tft.fillRoundRect(bw, botY, bw - 2, 28, 4, COL_BTN);
+  tft.setTextColor(kbSymMode ? COL_ACCENT : TFT_WHITE, COL_BTN);
+  tft.drawString("SYM", bw + 6, botY + 10);
+
+  // SPACE
+  tft.fillRoundRect(bw * 2, botY, bw - 2, 28, 4, COL_BTN);
+  tft.setTextColor(TFT_WHITE, COL_BTN);
+  tft.drawString("SPC", bw * 2 + 6, botY + 10);
+
+  // DEL
+  tft.fillRoundRect(bw * 3, botY, bw - 2, 28, 4, COL_BTN);
+  tft.setTextColor(TFT_YELLOW, COL_BTN);
+  tft.drawString("DEL", bw * 3 + 6, botY + 10);
+
+  // OK butonu
+  int okY = botY + 32;
+  tft.fillRoundRect(0, okY, SCREEN_W, 28, 4, 0x0640);
+  tft.setTextColor(TFT_GREEN, 0x0640);
+  tft.drawString("OK", SCREEN_W / 2 - 8, okY + 10);
+}
+
+bool handleKeyboardTouch(uint16_t x, uint16_t y) {
+  if (!kbActive) return false;
+
+  const char** rows = kbSymMode ? kbSymRows : kbRows;
+  int startY = 40;
+  int keyW = SCREEN_W / 10;
+  int keyH = 28;
+
+  // Harf tuşları
+  for (int r = 0; r < 3; r++) {
+    int len = strlen(rows[r]);
+    int offsetX = (SCREEN_W - len * keyW) / 2;
+    int ky = startY + r * (keyH + 3);
+
+    if (y >= ky && y <= ky + keyH) {
+      int k = (x - offsetX) / keyW;
+      if (k >= 0 && k < len) {
+        int bufLen = strlen(kbBuffer);
+        if (bufLen < 63) {
+          char ch = rows[r][k];
+          if (!kbSymMode) ch = kbShift ? toupper(ch) : tolower(ch);
+          kbBuffer[bufLen] = ch;
+          kbBuffer[bufLen + 1] = 0;
+          kbShift = false;
+          drawKeyboard();
+        }
+        return true;
+      }
+    }
+  }
+
+  // Alt tuşlar
+  int botY = startY + 3 * 31 + 4;
+  int bw = SCREEN_W / 4;
+
+  if (y >= botY && y <= botY + 28) {
+    if (x < bw) {
+      // SHIFT
+      kbShift = !kbShift;
+      drawKeyboard();
+    } else if (x < bw * 2) {
+      // SYM
+      kbSymMode = !kbSymMode;
+      drawKeyboard();
+    } else if (x < bw * 3) {
+      // SPACE
+      int bufLen = strlen(kbBuffer);
+      if (bufLen < 63) {
+        kbBuffer[bufLen] = ' ';
+        kbBuffer[bufLen + 1] = 0;
+        drawKeyboard();
+      }
+    } else {
+      // DEL
+      int bufLen = strlen(kbBuffer);
+      if (bufLen > 0) {
+        kbBuffer[bufLen - 1] = 0;
+        drawKeyboard();
+      }
+    }
+    return true;
+  }
+
+  // OK
+  int okY = botY + 32;
+  if (y >= okY && y <= okY + 28) {
+    kbActive = false;
+    kbSymMode = false;
+    kbShift = false;
+    if (kbCallback) kbCallback(kbBuffer);
+    return true;
+  }
+
+  return false;
+}
+
+void showKeyboard(const char* title, void (*callback)(const char*)) {
+  strlcpy(kbTitle, title, 32);
+  kbBuffer[0] = 0;
+  kbActive = true;
+  kbSymMode = false;
+  kbCallback = callback;
+  drawKeyboard();
+}
+
 
 // ─── SCROLL ARROWS ──────────────────────────────────────
 void drawScrollArrows(bool canUp, bool canDown) {
@@ -404,6 +581,27 @@ void drawFileActionMenu() {
   }
 }
 
+void onRenameCallback(const char* newName) {
+  if (strlen(newName) == 0) { loadFileDir(); return; }
+  String oldPath = String(currentPath);
+  if (oldPath.length() > 0) oldPath += "/";
+  oldPath += String(fileItems[kbSelectedFile].name);
+  String body = "{\"mount\":\"" + String(currentMount) +
+                "\",\"path\":\"" + oldPath +
+                "\",\"new_name\":\"" + String(newName) + "\"}";
+  httpPost(String(apiBase) + "/api/files/rename", body);
+  loadFileDir();
+}
+
+void onMkdirCallback(const char* name) {
+  if (strlen(name) == 0) { loadFileDir(); return; }
+  String body = "{\"mount\":\"" + String(currentMount) +
+                "\",\"path\":\"" + String(currentPath) +
+                "\",\"name\":\"" + String(name) + "\"}";
+  httpPost(String(apiBase) + "/api/files/mkdir", body);
+  loadFileDir();
+}
+
 void drawFileList() {
   tft.fillRect(0, 0, CONTENT_W, CONTENT_H, COL_BG);
   tft.setTextColor(COL_ACCENT, COL_BG);
@@ -473,11 +671,17 @@ void handleFileAction(int action) {
         String body = "{\"mount\":\"" + String(currentMount) + "\",\"path\":\"" + fullPath + "\"}";
         httpPost(String(apiBase) + "/api/files/delete", body);
       }
-      break;
+      
     case FMENU_RENAME:
+      if (selectedFile < 0) return;
+      kbSelectedFile = selectedFile;
+      showKeyboard("Rename:", onRenameCallback);
       break;
+
     case FMENU_MKDIR:
+      showKeyboard("New Folder:", onMkdirCallback);
       break;
+
     case FMENU_TRASH:
       if (selectedFile < 0) return;
       {
@@ -519,6 +723,12 @@ void showSettings() {
 }
 
 void handleTouch(uint16_t x, uint16_t y) {
+
+  if (kbActive) {
+    handleKeyboardTouch(x, y);
+    return;
+  }
+
   if (showFileMenu) {
     int menuW = 140;
     int menuH = FMENU_COUNT * 28 + 8;
