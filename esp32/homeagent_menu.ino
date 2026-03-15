@@ -12,40 +12,45 @@ struct Btn {
   uint16_t color;
 };
 
-const char* ssid     = "YOUR_WIFI_SSID";
+const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
-const char* apiBase  = "http://AgentJee.local:8000";
-const char* apiKey   = "YOUR_API_KEY";
-String resolvedIP    = "";
+const char* apiBase = "http://AgentJee.local:8000";
+const char* apiKey = "YOUR_API_KEY";
+String resolvedIP = "";
 
 #define SCREEN_W 240
 #define SCREEN_H 320
-#define BAR_H    40
+#define BAR_H 40
 #define SCROLL_W 12
 #define CONTENT_W (SCREEN_W - SCROLL_W)
 #define CONTENT_H (SCREEN_H - BAR_H)
 
-#define COL_BG     TFT_BLACK
+#define COL_BG TFT_BLACK
 #define COL_BTNBAR 0x1A3A
 #define COL_ACCENT TFT_CYAN
-#define COL_BTN    0x2A5A
+#define COL_BTN 0x2A5A
 #define COL_BTN_HL 0x4A9A
 #define COL_SCROLL 0x2A3A
-#define COL_THUMB  0x4A6A
+#define COL_THUMB 0x4A6A
 
-#define PAGE_MENU      0
+#define PAGE_MENU 0
 #define PAGE_DASHBOARD 1
-#define PAGE_FILES     2
-#define PAGE_SETTINGS  3
+#define PAGE_FILES 2
+#define PAGE_SETTINGS 3
 
-#define FMENU_COPY   0
-#define FMENU_CUT    1
-#define FMENU_PASTE  2
+#define FMENU_COPY 0
+#define FMENU_CUT 1
+#define FMENU_PASTE 2
 #define FMENU_DELETE 3
 #define FMENU_RENAME 4
-#define FMENU_MKDIR  5
-#define FMENU_TRASH  6
-#define FMENU_COUNT  7
+#define FMENU_MKDIR 5
+#define FMENU_TRASH 6
+#define FMENU_COUNT 7
+
+#define ARROW_X (CONTENT_W + 1)
+#define ARROW_UP_Y 2
+#define ARROW_DN_Y (CONTENT_H - 22)
+#define ARROW_SIZE 18
 
 const char* fmenuLabels[] = {
   "Copy", "Cut", "Paste", "Delete", "Rename", "New Folder", "Trash"
@@ -72,7 +77,7 @@ char clipPath[256] = "";
 bool clipCut = false;
 bool hasClip = false;
 
-void mapTouch(uint16_t rawX, uint16_t rawY, uint16_t &sx, uint16_t &sy) {
+void mapTouch(uint16_t rawX, uint16_t rawY, uint16_t& sx, uint16_t& sy) {
   sx = map(rawY, 301, 1, 0, SCREEN_W);
   sy = map(rawX, 234, 3, 0, SCREEN_H);
   sx = constrain(sx, 0, SCREEN_W);
@@ -105,10 +110,52 @@ String httpPost(String url, String body) {
   return result;
 }
 
+// ─── SCROLL ARROWS ──────────────────────────────────────
+void drawScrollArrows(bool canUp, bool canDown) {
+  // Yukarı ok
+  uint16_t upCol = canUp ? TFT_WHITE : TFT_DARKGREY;
+  tft.fillTriangle(
+    ARROW_X + ARROW_SIZE / 2, ARROW_UP_Y,
+    ARROW_X, ARROW_UP_Y + ARROW_SIZE,
+    ARROW_X + ARROW_SIZE, ARROW_UP_Y + ARROW_SIZE,
+    upCol);
+
+  // Aşağı ok
+  uint16_t dnCol = canDown ? TFT_WHITE : TFT_DARKGREY;
+  tft.fillTriangle(
+    ARROW_X, ARROW_DN_Y,
+    ARROW_X + ARROW_SIZE, ARROW_DN_Y,
+    ARROW_X + ARROW_SIZE / 2, ARROW_DN_Y + ARROW_SIZE,
+    dnCol);
+}
+
+bool handleScrollTouch(uint16_t x, uint16_t y, int& offset, int total, int visible) {
+  if (x < CONTENT_W) return false;
+
+  // Yukarı ok
+  if (y >= ARROW_UP_Y && y <= ARROW_UP_Y + ARROW_SIZE + 5) {
+    if (offset > 0) {
+      offset--;
+      return true;
+    }
+  }
+
+  // Aşağı ok
+  if (y >= ARROW_DN_Y && y <= ARROW_DN_Y + ARROW_SIZE + 5) {
+    if (offset < total - visible) {
+      offset++;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 void drawBar(int x, int y, int w, int h, float pct, uint16_t color) {
   tft.drawRect(x, y, w, h, TFT_DARKGREY);
   int filled = (w - 2) * constrain(pct, 0, 100) / 100;
-  tft.fillRect(x+1, y+1, filled, h-2, color);
+  tft.fillRect(x + 1, y + 1, filled, h - 2, color);
 }
 
 void drawScrollBar(int offset, int total, int visible) {
@@ -139,7 +186,7 @@ void drawMenu() {
   tft.drawString("HomeAgent", 55, 10);
 
   const char* items[] = { "Dashboard", "Files", "Settings" };
-  const char* subs[]  = { "CPU/RAM/Disk/Temp", "File Explorer", "System Info" };
+  const char* subs[] = { "CPU/RAM/Disk/Temp", "File Explorer", "System Info" };
 
   for (int i = 0; i < 3; i++) {
     int y = 55 + i * 70;
@@ -163,9 +210,18 @@ void handleMenuTouch(uint16_t x, uint16_t y) {
   for (int i = 0; i < 3; i++) {
     if (y >= items[i] && y <= items[i] + 58) {
       switch (i) {
-        case 0: currentPage = PAGE_DASHBOARD; showDashboard(); break;
-        case 1: currentPage = PAGE_FILES; loadFileDevices(); break;
-        case 2: currentPage = PAGE_SETTINGS; showSettings(); break;
+        case 0:
+          currentPage = PAGE_DASHBOARD;
+          showDashboard();
+          break;
+        case 1:
+          currentPage = PAGE_FILES;
+          loadFileDevices();
+          break;
+        case 2:
+          currentPage = PAGE_SETTINGS;
+          showSettings();
+          break;
       }
       return;
     }
@@ -180,15 +236,15 @@ void showDashboard() {
     tft.setTextColor(TFT_RED, COL_BG);
     tft.setTextSize(2);
     tft.drawString("Connection error", 20, 140);
-    Btn btns[] = { {"< Back", TFT_LIGHTGREY}, {"Home", COL_ACCENT} };
+    Btn btns[] = { { "< Back", TFT_LIGHTGREY }, { "Home", COL_ACCENT } };
     drawBtnBar(btns, 2);
     return;
   }
 
   JsonDocument doc;
   deserializeJson(doc, resp);
-  float cpu  = doc["cpu_percent"];
-  float ram  = doc["ram_percent"];
+  float cpu = doc["cpu_percent"];
+  float ram = doc["ram_percent"];
   float disk = doc["disk_percent"];
   float temp = doc["cpu_temp"];
 
@@ -197,32 +253,40 @@ void showDashboard() {
   tft.setTextSize(2);
   tft.drawString("Dashboard", 55, 8);
 
-  tft.setTextSize(1); tft.setTextColor(TFT_LIGHTGREY, COL_BG);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, COL_BG);
   tft.drawString("CPU Usage", 10, 42);
-  tft.setTextSize(2); tft.setTextColor(TFT_BLUE, COL_BG);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_BLUE, COL_BG);
   tft.drawString(String(cpu, 1) + "%", 10, 56);
   drawBar(10, 78, CONTENT_W - 20, 10, cpu, TFT_BLUE);
 
-  tft.setTextSize(1); tft.setTextColor(TFT_LIGHTGREY, COL_BG);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, COL_BG);
   tft.drawString("RAM Usage", 10, 102);
-  tft.setTextSize(2); tft.setTextColor(TFT_PURPLE, COL_BG);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_PURPLE, COL_BG);
   tft.drawString(String(ram, 1) + "%", 10, 116);
   drawBar(10, 138, CONTENT_W - 20, 10, ram, TFT_PURPLE);
 
-  tft.setTextSize(1); tft.setTextColor(TFT_LIGHTGREY, COL_BG);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, COL_BG);
   tft.drawString("Disk Usage", 10, 162);
-  tft.setTextSize(2); tft.setTextColor(TFT_GREEN, COL_BG);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_GREEN, COL_BG);
   tft.drawString(String(disk, 1) + "%", 10, 176);
   drawBar(10, 198, CONTENT_W - 20, 10, disk, TFT_GREEN);
 
-  tft.setTextSize(1); tft.setTextColor(TFT_LIGHTGREY, COL_BG);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, COL_BG);
   tft.drawString("Temperature", 10, 222);
   tft.setTextSize(2);
-  uint16_t tc = temp > 70 ? TFT_RED : temp > 55 ? TFT_ORANGE : TFT_GREEN;
+  uint16_t tc = temp > 70 ? TFT_RED : temp > 55 ? TFT_ORANGE
+                                                : TFT_GREEN;
   tft.setTextColor(tc, COL_BG);
   tft.drawString(String(temp, 1) + " C", 10, 236);
 
-  Btn btns[] = { {"< Back", TFT_LIGHTGREY}, {"Home", COL_ACCENT} };
+  Btn btns[] = { { "< Back", TFT_LIGHTGREY }, { "Home", COL_ACCENT } };
   drawBtnBar(btns, 2);
 }
 
@@ -242,7 +306,7 @@ String urlEncode(const char* str) {
 
 String getFullPath(const char* name) {
   String p = String(currentPath);
-  if (p.length() > 0 && p[p.length()-1] != '/') p += "/";
+  if (p.length() > 0 && p[p.length() - 1] != '/') p += "/";
   p += name;
   return p;
 }
@@ -269,9 +333,9 @@ void loadFileDevices() {
 
   for (JsonObject d : arr) {
     const char* mount = d["mount"];
-    const char* used  = d["used"];
-    const char* size  = d["size"];
-    const char* pct   = d["percent"];
+    const char* used = d["used"];
+    const char* size = d["size"];
+    const char* pct = d["percent"];
     if (!mount || strcmp(mount, "tmpfs") == 0) continue;
 
     tft.fillRoundRect(8, y, CONTENT_W - 16, 48, 6, COL_BTN);
@@ -289,7 +353,7 @@ void loadFileDevices() {
     if (fileCount >= 64) break;
   }
 
-  Btn btns[] = { {"< Back", TFT_LIGHTGREY}, {"Home", COL_ACCENT}, {"Action", TFT_YELLOW}, {"Trash", TFT_RED} };
+  Btn btns[] = { { "< Back", TFT_LIGHTGREY }, { "Home", COL_ACCENT }, { "Action", TFT_YELLOW }, { "Trash", TFT_RED } };
   drawBtnBar(btns, 4);
   currentPage = PAGE_FILES;
   strcpy(currentMount, "");
@@ -297,8 +361,7 @@ void loadFileDevices() {
 }
 
 void loadFileDir() {
-  String url = String(apiBase) + "/api/files/list?mount=" +
-               urlEncode(currentMount) + "&path=" + urlEncode(currentPath);
+  String url = String(apiBase) + "/api/files/list?mount=" + urlEncode(currentMount) + "&path=" + urlEncode(currentPath);
   String resp = httpGet(url);
   if (resp == "") return;
 
@@ -312,7 +375,7 @@ void loadFileDir() {
     if (idx >= 64) break;
     strlcpy(fileItems[idx].name, item["name"] | "", 64);
     fileItems[idx].isDir = strcmp(item["type"] | "", "dir") == 0;
-    fileItems[idx].size  = item["size"] | 0;
+    fileItems[idx].size = item["size"] | 0;
     idx++;
     fileCount++;
   }
@@ -367,7 +430,8 @@ void drawFileList() {
   }
 
   drawScrollBar(scrollOffset, fileCount, visibleCount);
-  Btn btns[] = { {"< Back", TFT_LIGHTGREY}, {"Home", COL_ACCENT}, {"Action", TFT_YELLOW}, {"Trash", TFT_RED} };
+  drawScrollArrows(scrollOffset > 0, scrollOffset < fileCount - visibleCount);
+  Btn btns[] = { { "< Back", TFT_LIGHTGREY }, { "Home", COL_ACCENT }, { "Action", TFT_YELLOW }, { "Trash", TFT_RED } };
   drawBtnBar(btns, 4);
 }
 
@@ -398,8 +462,7 @@ void handleFileAction(int action) {
         if (lastSlash >= 0) srcName = srcName.substring(lastSlash + 1);
         String dst = getFullPath(srcName.c_str());
         String endpoint = clipCut ? "/api/files/move" : "/api/files/copy";
-        String body = "{\"mount\":\"" + String(currentMount) + "\",\"src\":\"" +
-                      String(clipPath) + "\",\"dst\":\"" + dst + "\"}";
+        String body = "{\"mount\":\"" + String(currentMount) + "\",\"src\":\"" + String(clipPath) + "\",\"dst\":\"" + dst + "\"}";
         httpPost(String(apiBase) + endpoint, body);
         if (clipCut) hasClip = false;
       }
@@ -439,7 +502,7 @@ void showSettings() {
     JsonDocument doc;
     deserializeJson(doc, resp);
     const char* labels[] = { "IP", "WiFi", "Host", "User", "Version" };
-    const char* keys[]   = { "ip", "wifi", "hostname", "username", "version" };
+    const char* keys[] = { "ip", "wifi", "hostname", "username", "version" };
     for (int i = 0; i < 5; i++) {
       int y = 48 + i * 44;
       tft.fillRoundRect(8, y, CONTENT_W - 16, 36, 6, COL_BTN);
@@ -451,7 +514,7 @@ void showSettings() {
     }
   }
 
-  Btn btns[] = { {"< Back", TFT_LIGHTGREY}, {"Home", COL_ACCENT} };
+  Btn btns[] = { { "< Back", TFT_LIGHTGREY }, { "Home", COL_ACCENT } };
   drawBtnBar(btns, 2);
 }
 
@@ -479,11 +542,13 @@ void handleTouch(uint16_t x, uint16_t y) {
     int btn = x / bw;
 
     if (currentPage == PAGE_DASHBOARD) {
-      currentPage = PAGE_MENU; drawMenu();
+      currentPage = PAGE_MENU;
+      drawMenu();
     } else if (currentPage == PAGE_FILES) {
       if (btn == 0) {
         if (strlen(currentPath) == 0 && strlen(currentMount) == 0) {
-          currentPage = PAGE_MENU; drawMenu();
+          currentPage = PAGE_MENU;
+          drawMenu();
         } else if (strlen(currentPath) == 0) {
           strcpy(currentMount, "");
           loadFileDevices();
@@ -495,7 +560,8 @@ void handleTouch(uint16_t x, uint16_t y) {
           loadFileDir();
         }
       } else if (btn == 1) {
-        currentPage = PAGE_MENU; drawMenu();
+        currentPage = PAGE_MENU;
+        drawMenu();
       } else if (btn == 2) {
         showFileMenu = true;
         drawFileList();
@@ -509,9 +575,19 @@ void handleTouch(uint16_t x, uint16_t y) {
         }
       }
     } else if (currentPage == PAGE_SETTINGS) {
-      currentPage = PAGE_MENU; drawMenu();
+      currentPage = PAGE_MENU;
+      drawMenu();
     }
     return;
+  }
+
+  // Scroll okları
+  if (currentPage == PAGE_FILES) {
+    int visibleCount = (CONTENT_H - 20) / 28;
+    if (handleScrollTouch(x, y, scrollOffset, fileCount, visibleCount)) {
+      drawFileList();
+      return;
+    }
   }
 
   if (currentPage == PAGE_MENU) {
