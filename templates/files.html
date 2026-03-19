@@ -203,7 +203,6 @@
       #previewModal.open {
         display: flex;
       }
-
     </style>
   </head>
 
@@ -302,6 +301,47 @@
         document.getElementById("previewModal").classList.add("open");
       }
 
+      function showSearchResults(results, query) {
+        const explorer = document.getElementById("explorer");
+        let html = `
+    <div class="explorer">
+      <div class="explorer-toolbar">
+        <button class="btn" id="btnBack">⬅ Back</button>
+        <button class="btn" id="btnHome">🏠 Devices</button>
+        <div style="margin-left:auto; color:#64748b; font-size:13px;">
+          "${esc(query)}" için ${results.length} sonuç
+        </div>
+      </div>
+      <ul class="file-list">
+  `;
+
+        results.forEach((it) => {
+          const icon = it.type === "dir" ? "📁" : "📄";
+          html += `
+      <li class="file-item" data-name="${esc(it.name)}" data-type="${it.type}" data-path="${esc(it.path)}">
+        <div class="left">${icon} ${esc(it.name)}</div>
+        <div class="right">
+          <span class="size" style="color:#64748b;">${esc(it.path)}</span>
+        </div>
+      </li>
+    `;
+        });
+
+        html += `</ul></div>`;
+        explorer.innerHTML = html;
+
+        document.getElementById("btnHome").onclick = () => {
+          currentMount = null;
+          currentPath = "";
+          document.getElementById("explorer").style.display = "none";
+          document.getElementById("devices").style.display = "grid";
+        };
+
+        document.getElementById("btnBack").onclick = () => {
+          loadDir();
+        };
+      }
+
       async function loadDevices() {
         const res = await fetch("/api/files/devices", { cache: "no-store" });
         const devices = await res.json();
@@ -346,6 +386,14 @@
           <button class="btn" id="btnUpload">⬆ Upload</button>
           <button class="btn" id="btnMkdir">📁 New Folder</button>
           <input type="file" id="fileInput" style="display:none" multiple>
+          <div style="display:flex; gap:6px; margin-left:auto;">
+            <input id="searchInput" type="text" placeholder="🔍 Ara..." style="
+              background:#080c14; border:1px solid #1e2d45; color:#e2e8f0;
+              border-radius:8px; padding:6px 10px; font-size:13px; width:160px; outline:none;
+            ">
+            <button class="btn" id="btnSearch">Ara</button>
+            <button class="btn" id="btnSearchClear" style="display:none;">✕</button>
+          </div>
         </div>
         <div class="breadcrumb" style="padding:10px 16px;">
           ${esc(currentMount)} / ${esc(currentPath)}
@@ -400,6 +448,25 @@
           loadDir();
         };
 
+        document.getElementById("btnSearch").onclick = async () => {
+          const query = document.getElementById("searchInput").value.trim();
+          if (!query) return;
+          const res = await fetch(
+            `/api/files/search?mount=${encodeURIComponent(currentMount)}&path=${encodeURIComponent(currentPath)}&query=${encodeURIComponent(query)}`,
+            { cache: "no-store" },
+          );
+          const data = await res.json();
+          showSearchResults(data.results, query);
+          document.getElementById("btnSearchClear").style.display =
+            "inline-block";
+        };
+
+        document.getElementById("btnSearchClear").onclick = () => {
+          document.getElementById("searchInput").value = "";
+          document.getElementById("btnSearchClear").style.display = "none";
+          loadDir();
+        };
+
         document.getElementById("fileInput").onchange = async (e) => {
           const files = e.target.files;
           for (const file of files) {
@@ -422,6 +489,21 @@
           currentPath = parts.join("/");
           loadDir();
         };
+
+        document.querySelectorAll(".file-item").forEach((li) => {
+          li.onclick = () => {
+            const itemPath = li.dataset.path;
+            if (li.dataset.type === "dir") {
+              currentPath = itemPath;
+              loadDir();
+            } else {
+              const parts = itemPath.split("/");
+              parts.pop();
+              currentPath = parts.join("/");
+              loadDir();
+            }
+          };
+        });
 
         document.querySelectorAll(".file-item").forEach((li) => {
           li.onclick = (e) => {

@@ -256,3 +256,35 @@ def api_files_preview(request: Request, mount: str, path: str):
         return {"type": "pdf", "mime": mime}
     
     return {"type": "unsupported", "mime": mime}
+
+@router.get("/search")
+def api_files_search(request: Request, mount: str, query: str, path: str = ""):
+    m = _find_mount(mount)
+    if not m:
+        return {"error": "invalid_mount"}
+    
+    base = Path(mount).resolve()
+    search_root = (base / path.lstrip("/")).resolve()
+    
+    if not str(search_root).startswith(str(base)):
+        return {"error": "invalid_path"}
+    
+    results = []
+    query_lower = query.lower()
+    
+    for p in search_root.rglob("*"):
+        try:
+            if query_lower in p.name.lower():
+                st = p.stat()
+                results.append({
+                    "name": p.name,
+                    "path": str(p.relative_to(base)),
+                    "type": "dir" if p.is_dir() else "file",
+                    "size": st.st_size if p.is_file() else None,
+                })
+                if len(results) >= 100:
+                    break
+        except PermissionError:
+            continue
+    
+    return {"query": query, "results": results}
