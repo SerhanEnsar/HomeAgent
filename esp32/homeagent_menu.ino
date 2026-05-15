@@ -23,10 +23,10 @@ struct TrashItem {
   bool isDir;
 };
 
-const char* ssid     = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid     = "YOUR_WIFI_SSID";  // Set your Wi-Fi SSID
+const char* password = "YOUR_WIFI_PASSWORD";  // Set your Wi-Fi password
 const char* apiBase  = "http://AgentJee.local:8000";
-const char* apiKey   = "YOUR_API_KEY";
+const char* apiKey   = "YOUR_API_KEY";  // Match API_KEY in .env
 String resolvedIP    = "";
 
 #define SCREEN_W 240
