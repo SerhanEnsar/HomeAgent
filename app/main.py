@@ -16,7 +16,7 @@ templates = Jinja2Templates(directory="templates")
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "fallback_secret"))
 
 USERNAME = os.getenv("USERNAME", "admin")
-PASSWORD = os.getenv("PASSWORD", "changeme")
+PASSWORD = os.getenv("PASSWORD")  # Set in .env — no default for security
 
 def is_logged_in(request: Request) -> bool:
     return bool(request.session.get("user"))
