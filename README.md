@@ -2,6 +2,27 @@
 
 HomeAgent is a self-hosted home control system running on a Raspberry Pi. It provides a web-based dashboard, file manager, real-time system stats, and an AI assistant interface — all secured behind session-based authentication.
 
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>Login</b></td>
+    <td align="center"><b>Dashboard</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/login.png" width="480"/></td>
+    <td><img src="docs/images/dashboard.png" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>File Explorer — Devices</b></td>
+    <td align="center"><b>File Explorer — Context Menu</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/files-devices.png" width="480"/></td>
+    <td><img src="docs/images/files-explorer.png" width="480"/></td>
+  </tr>
+</table>
+
 ## ✨ Features
 
 - **System Dashboard** — Live CPU, RAM, Disk usage and CPU temperature
