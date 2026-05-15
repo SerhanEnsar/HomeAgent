@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trash - HomeAgent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #080c14;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #e2e8f0;
+    }
+
+    .container {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    h1 { font-size: 20px; font-weight: 800; }
+
+    .btn {
+      padding: 7px 14px;
+      background: #1e2d45;
+      border: 1px solid #2a3f5f;
+      color: #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn:hover { background: #2a3f5f; }
+    .btn.danger { border-color: rgba(239,68,68,.4); color: #f87171; }
+
+    .file-list {
+      background: #0f1623;
+      border: 1px solid #1e2d45;
+      border-radius: 14px;
+      overflow: hidden;
+      list-style: none;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-top: 1px solid #1e2d45;
+    }
+
+    .file-item:first-child { border-top: none; }
+
+    .file-item .left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .file-item .right {
+      display: flex;
+      gap: 8px;
+    }
+
+    .empty {
+      padding: 40px;
+      text-align: center;
+      color: #64748b;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+{% include "_nav.html" %}
+
+<div class="container">
+  <div class="header">
+    <h1>🗑 Trash</h1>
+    <button class="btn danger" id="btnEmptyTrash">Empty Trash</button>
+  </div>
+
+  <ul class="file-list" id="trashList">
+    <li class="empty">Loading...</li>
+  </ul>
+</div>
+
+<script>
+  async function loadTrash() {
+    const res = await fetch("/api/files/trash/list", { cache: "no-store" });
+    const items = await res.json();
+    const list = document.getElementById("trashList");
+
+    if (!items.length) {
+      list.innerHTML = '<li class="empty">Trash is empty</li>';
+      return;
+    }
+
+    list.innerHTML = items.map(it => `
+      <li class="file-item">
+        <div class="left">
+          ${it.type === "dir" ? "📁" : "📄"} ${it.name}
+        </div>
+        <div class="right">
+          <button class="btn" onclick="restore('${it.name}')">↩ Restore</button>
+          <button class="btn danger" onclick="deletePermanent('${it.name}')">🗑 Delete</button>
+        </div>
+      </li>
+    `).join("");
+  }
+
+  async function restore(name) {
+  await fetch("/api/files/trash/restore", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+  loadTrash();
+}
+
+  async function deletePermanent(name) {
+    if (!confirm("Permanently delete " + name + "?")) return;
+    await fetch("/api/files/trash/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+    loadTrash();
+  }
+
+  document.getElementById("btnEmptyTrash").onclick = async () => {
+    if (!confirm("Empty all trash?")) return;
+    const res = await fetch("/api/files/trash/list", { cache: "no-store" });
+    const items = await res.json();
+    for (const it of items) {
+      await fetch("/api/files/trash/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: it.name })
+      });
+    }
+    loadTrash();
+  };
+
+  loadTrash();
+</script>
+
+</body>
+</html>
