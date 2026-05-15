@@ -14,10 +14,17 @@ app = FastAPI()
 app.include_router(files_router)
 templates = Jinja2Templates(directory="templates")
 
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "fallback_secret"))
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "change-me-in-dotenv"))
 
 USERNAME = os.getenv("USERNAME", "admin")
-PASSWORD = os.getenv("PASSWORD")  # Set PASSWORD in your .env file — no default for security
+_PASSWORD_ENV = os.getenv("PASSWORD")
+if _PASSWORD_ENV:
+    PASSWORD = _PASSWORD_ENV
+else:
+    PASSWORD = "changeme"
+    print("\n⚠️  WARNING: PASSWORD not set in .env — using temporary default 'changeme'.")
+    print("   Copy .env.example to .env and set your credentials before deploying.\n")
+
 
 def is_logged_in(request: Request) -> bool:
     return bool(request.session.get("user"))
