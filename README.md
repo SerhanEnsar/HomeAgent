@@ -23,7 +23,22 @@ HomeAgent is a self-hosted home control system running on a Raspberry Pi. It pro
   </tr>
 </table>
 
-## ✨ Features
+### 🖥️ ESP32 Touchscreen Client
+
+<table>
+  <tr>
+    <td><img src="docs/images/esp32/esp32_01.jpg" width="310"/></td>
+    <td><img src="docs/images/esp32/esp32_02.jpg" width="310"/></td>
+    <td><img src="docs/images/esp32/esp32_03.jpg" width="310"/></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/esp32/esp32_04.jpg" width="310"/></td>
+    <td><img src="docs/images/esp32/esp32_05.jpg" width="310"/></td>
+    <td><img src="docs/images/esp32/esp32_06.jpg" width="310"/></td>
+  </tr>
+</table>
+
+
 
 - **System Dashboard** — Live CPU, RAM, Disk usage and CPU temperature
 - **File Manager** — Browse, rename, download, and delete files directly on the Pi
