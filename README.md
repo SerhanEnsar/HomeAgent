@@ -134,6 +134,10 @@ TG_TOKEN=<your_token> TG_CHAT_ID=<your_chat_id> python app/telegram_control.py
 | [HomeAgent_Wear](https://github.com/serhanensar/HomeAgent_Wear) | Wear OS companion app |
 | [HomeAgentMobile](https://github.com/serhanensar/HomeAgentMobile) | Cross-platform mobile app (Expo) |
 
+## 👨‍💻 Developer
+
+Created and developed by **[Serhan Ensar](https://github.com/SerhanEnsar)**.
+
 ## 📄 License
 
 MIT
