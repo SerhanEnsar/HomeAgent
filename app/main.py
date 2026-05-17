@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Serhan Ensar. All rights reserved.
 from fastapi import FastAPI, Request, Form, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from starlette.middleware.sessions import SessionMiddleware

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Serhan Ensar. All rights reserved.
 from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from pathlib import Path
