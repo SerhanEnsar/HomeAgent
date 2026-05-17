@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Serhan Ensar. All rights reserved.
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <WiFi.h>
