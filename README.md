@@ -2,6 +2,8 @@
 
 HomeAgent is a self-hosted home control system running on a Raspberry Pi. It provides a web-based dashboard, file manager, real-time system stats, and an AI assistant interface — all secured behind session-based authentication.
 
+> **Note:** this repository is a snapshot of an earlier build. The version running now uses JWT auth and Google Gemini 2.5 Flash for the assistant; the code here still has session cookies and a local Mistral 7B via Ollama.
+
 ## 📸 Screenshots
 
 <table>
